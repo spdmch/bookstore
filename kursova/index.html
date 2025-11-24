@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Онлайн-Книгарня | SpBooks</title>
+
+    <!-- Підключення шрифтів: Montserrat (основний) та Playfair Display (для заголовка) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Підключення фінальних стилів -->
+    <link rel="stylesheet" href="styles/main.css">
+    
+    <!-- Підключення іконок Font Awesome (для зручності) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+<body>
+    <header>
+        <!-- Обгортка для білого заокругленого блоку -->
+        <div class="logo-wrapper"> 
+            <div class="logo-container">
+                <!-- Логотип (використовуємо placeholder, оскільки assets/photologo.jpg недоступний) -->
+                <img src="assets/photologo.jpg"SpBooks Logo" class="site-logo" onerror="this.onerror=null; this.src='https://placehold.co/35x35/462506/FFC30B?text=S'">
+                <h1>SpBooks</h1> 
+            </div>
+        </div>
+        
+        <nav id="navigation-container">
+            <a href="#/catalog" class="nav-link"><i class="fas fa-book"></i> Каталог</a>
+            <a href="#/login" class="nav-link"><i class="fas fa-sign-in-alt"></i> Вхід</a>
+            <a href="#/admin" class="nav-link"><i class="fas fa-user-shield"></i> Адмін-панель</a>
+        </nav>
+    </header>
+
+    <main id="app-container">
+        <!-- Контент завантажуватиметься сюди (Каталог, Форми, Таблиці) -->
+        <h2 style="text-align: center; color: #4A301D; margin-top: 50px;">Ласкаво просимо до SpBooks! Оберіть розділ у навігації.</h2>
+        <div id="loading-spinner" style="text-align:center; display:none;"><i class="fas fa-spinner fa-spin fa-2x" style="color:#462506;"></i></div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 | Курсова робота | Розробник: Думич Софія &middot; <span id="user-status"></span></p>
+    </footer>
+
+    <!-- Firebase та Chart.js (якщо потрібен для адмін-панелі) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    
+    <!-- Ініціалізація Firebase SDK (для роботи з Firestore та Auth) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, addDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        // Встановлюємо режим налагодження для Firestore
+        setLogLevel('Debug');
+        
+        // Глобальні змінні з Canvas (обов'язкові)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (!firebaseConfig) {
+            console.error("Firebase configuration is missing!");
+            document.getElementById('app-container').innerHTML = `<p class="error-message">Помилка: Не вдалося завантажити конфігурацію Firebase.</p>`;
+        }
+        
+        // Ініціалізація Firebase та Auth
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const auth = getAuth(app);
+        
+        let userId = null;
+
+        // 1. Функція ініціалізації автентифікації
+        async function initializeAuth() {
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                console.log("Firebase Auth initialized successfully.");
+            } catch (error) {
+                console.error("Error during Firebase sign-in:", error);
+            }
+        }
+
+        // 2. Слухач стану автентифікації
+        onAuthStateChanged(auth, (user) => {
+            const statusElement = document.getElementById('user-status');
+            if (user) {
+                userId = user.uid;
+                statusElement.textContent = `Користувач ID: ${userId}`;
+                console.log("Current user ID:", userId);
+                // Після успішної автентифікації можна запускати основну логіку (роутинг, завантаження даних)
+                window.db = db;
+                window.auth = auth;
+                window.userId = userId;
+                window.appId = appId;
+                // Запускаємо роутер після того, як Auth готовий
+                if (window.initRouter) {
+                    window.initRouter();
+                }
+            } else {
+                userId = null;
+                statusElement.textContent = `Анонімний користувач`;
+                // Якщо користувач вийшов, перезавантажуємо роутер
+                if (window.initRouter) {
+                    window.initRouter();
+                }
+            }
+        });
+
+        // Запускаємо процес автентифікації
+        initializeAuth();
+    </script>
+
+    <!-- Основна логіка додатка -->
+    <script type="module" src="js/main.js"></script> 
+</body>
+</html>
